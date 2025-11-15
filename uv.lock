@@ -52,11 +52,15 @@ name = "livewaves"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "numpy" },
     { name = "soundcard" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "soundcard", specifier = ">=0.4.5" }]
+requires-dist = [
+    { name = "numpy", specifier = ">=2.3.4" },
+    { name = "soundcard", specifier = ">=0.4.5" },
+]
 
 [[package]]
 name = "numpy"
