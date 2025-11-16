@@ -1,27 +1,59 @@
 import numpy as np
 
-def create_sinesignal(sample_rate: int, frequency: float) -> np.ndarray:
-    time = np.linspace(0, 1, sample_rate, endpoint=False)
-    sine_wave = np.sin(2*np.pi * frequency * time)
+class PureSignal:
+    def __init__(self, sampling_rate: int, frequency: float, initial_phase: float = 0.0, duration: float = 1.0, label: str = "") -> None:
+        self.sampling_rate = sampling_rate
+        self.frequency = frequency
+        self.current_phase = 0.0
+        self.label = label
 
-    return normalize(sine_wave)
+        self.signal: np.ndarray = np.array([], dtype=float)
+        self.generate(duration)
 
-def create_cosinesignal(sample_rate: int, frequency: float) -> np.ndarray:
-    time = np.linspace(0, 1, sample_rate, endpoint=False)
-    cosine_wave = np.cos(2*np.pi * frequency * time)
+    def generate(self, duration: float):
+        n_samples = int(self.sampling_rate * duration)
+        time = np.arange(n_samples) / self.sampling_rate
+
+        phase = 2*np.pi*self.frequency*time + self.current_phase
+        new_signal_segment = np.sin(phase)
+
+        self.current_phase =  (phase[-1] + 2*np.pi*self.frequency/self.sampling_rate) % (2*np.pi)
+        self.signal = np.concatenate([self.signal, new_signal_segment])
+        self.normalize()
+
+    def normalize(self):
+        self.signal /= np.max(np.abs(self.signal))
+        
+    def extend_duration(self, duration: float):
+        self.generate(duration)
+
+    def amplify(self, gain: float = 1.0):
+        self.signal *= gain
     
-    return normalize(cosine_wave)
+class NonPureSignal:
+    def __init__(self, signals: np.ndarray) -> None:
+        self.signals_array = signals
 
-def sum_signals(signals: np.ndarray) -> np.ndarray:
-    return normalize(signals.sum(axis=0))
+        self.combined_signal = np.array([], dtype=float)
+        self.sum_signals()
+    
+    def normalize(self):
+        self.combined_signal /= np.max(np.abs(self.combined_signal))
+
+    def sum_signals(self):
+        temp_array = np.array([x.signal for x in self.signals_array])
+        self.combined_signal = temp_array.sum(axis=0)
+        self.normalize()
+        
+
+    def add_signal(self, signal: np.ndarray):
+        self.signals_array = np.concatenate([self.signals_array, signal])
+        self.sum_signals()
+
+
+
+
+
     
 
-def normalize(signal: np.ndarray) -> np.ndarray:
-    signal /= np.max(np.abs(signal))
-    return signal
-
-def amplify(signal: np.ndarray, gain: float) -> np.ndarray:
-    return signal * gain
-
-def change_duration(signal: np.ndarray, duration) -> np.ndarray:
-    ...
+    
