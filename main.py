@@ -1,8 +1,7 @@
-
+import microphone_animator
 
 def main():
-    print("Hello from livewaves!")
-    
+    pass
 
 
 if __name__ == "__main__":
