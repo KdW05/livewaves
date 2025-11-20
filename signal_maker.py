@@ -10,6 +10,10 @@ class BaseSignal:
 
     def amplify_signal(self, gain: float):
         self.signal *= gain
+    
+    def pad_signal(self, pad_value: float, pad_amount: int, pad_position: int):
+        padded_signal = np.concatenate([self.signal[:pad_position], np.array([pad_value for i in range(pad_amount)]), self.signal[pad_position:]])
+        self.signal = padded_signal
 
 class PureSignal(BaseSignal):
     def __init__(self, sampling_rate: int, frequency: float, 
@@ -44,38 +48,56 @@ class PureSignal(BaseSignal):
 
     
 class CompositeSignal(BaseSignal):
-    def __init__(self, signals = None, label: str = "", normalize: bool = True) -> None:
+    def __init__(self, signals = None, label: str = "", composition_method: str = "cut", normalize: bool = True) -> None:
         super().__init__()
-        self.signals_array = signals if signals is not None else []
+        self.signals_obj_array = signals if signals is not None else []
         self.label = label
         self.normalize = normalize
+
+        self.match_signal_lengths(composition_method)
         self.sum_signals()
 
     def sum_signals(self):
-        temp_array = np.array([x.signal for x in self.signals_array])
-        self.signal = temp_array.sum(axis=0)
+        temp_list = np.array([x.signal for x in self.signals_obj_array])
+        self.signal = temp_list.sum(axis=0)
         
         if self.normalize:
             self.normalize_signal()
-        
-
-    def add_signal(self, new_signal, composition_method = "match max"):
-        self.signals_array = np.concatenate([self.signals_array, new_signal])
-        
+    
+    def match_signal_lengths(self, composition_method):
+        signal_lengths = [len(x.signal) for x in self.signals_obj_array]
+        #TODO Optimize by early return if all signal lengths are the same
         match composition_method:
-            case "pad after":  
-                #TODO add padding after signal 
+            case "pad after": # Pads every signal with 0 at end of signal to match longest signal length
+                matching_length = np.max(signal_lengths)
+                pad_amounts = [(matching_length - current_signal_length) for current_signal_length in signal_lengths]
+                for i, signal_obj in enumerate(self.signals_obj_array):
+                    signal_obj.pad_signal(pad_value=0, pad_amount=pad_amounts[i], pad_position=-1)
+                # for i, v in enumerate(pad_amounts):
+                #     self.signals_obj_array[i].signal.pad_signal(pad_value=0, pad_amount=v, pad_position=-1)
+
+            case "pad before": # Pads every signal with 0 at beginning of signal to match longest signal length
+                matching_length = np.max(signal_lengths)
+                pad_amounts = [(matching_length - current_signal_length) for current_signal_length in signal_lengths]
+                for i, signal_obj in enumerate(self.signals_obj_array):
+                    signal_obj.pad_signal(pad_value=0, pad_amount=pad_amounts[i], pad_position=0)
+                # for i, v in enumerate(pad_amounts):
+                #     self.signals_obj_array[i].signal.pad_signal(pad_value=0, pad_amount=v, pad_position=0)
+                       
+
+            case "cut": # Changes all signals lengths to the shortest signal 
+                matching_length = np.min(signal_lengths)
+                for i, signal_obj in enumerate(self.signals_obj_array):
+                    signal_obj.signal = signal_obj.signal[:matching_length]
+
+            case "match": 
+                #TODO changes all signals lengths to the longest signal 
                 pass
-            case "pad before":
-                #TODO add padding before signal
-                pass
-            case "match min":
-                #TODO change self.signals_array to match smallest signal length
-                pass
-            case "match max":
-                #TODO change self.signals_array to match largest signal length
-                pass
-        
+
+    def add_signal(self, new_signal_obj, composition_method = "cut"):
+        self.signals_obj_array = np.concatenate([self.signals_obj_array, new_signal_obj])
+        self.match_signal_lengths(composition_method)
+  
         self.sum_signals()
 
 
